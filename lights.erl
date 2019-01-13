@@ -13,6 +13,8 @@ lightsCoords(1) -> 31;
 lightsCoords(2) -> 56.
 
 
+
+
 % colors
 color(0) -> red;
 color(1) -> redamber;
@@ -154,17 +156,42 @@ lightsPair(Id, X, Y, Color) ->
       printLightPair(Id, X, Y, Color),
       lightsPair(Id, X, Y, Color)
 	end.
-		
+
+counterInit(Id)->
+	X = lightsCoords(Id),
+	Y = 8,
+	spawn(?MODULE,counter,[X,Y,0,0]).
+
+counter(X,Y,Lvalue,Rvalue)->
+	printxy({X+1, Y+1, integer_to_list(Lvalue)}),
+	printxy({X+11 , Y-1, integer_to_list(Rvalue)}),
+	receive
+		lcounterp ->
+			counter(X,Y,Lvalue+1,Rvalue);
+		rcounterp ->
+			counter(X,Y,Lvalue,Rvalue+1)
+
+	end.
+
 
 intersectionModelInit(Id) ->
+	CounterPid = counterInit(Id),
   VertLightPid = spawn(?MODULE, lightsPair, [0, lightsCoords(Id), 1, green]),
   HorLightPid = spawn(?MODULE, lightsPair, [1, lightsCoords(Id), 1, red]),
   VertLightPid!print,
   HorLightPid!print,
-	spawn(?MODULE, intersectionModelLoop,[Id, VertLightPid, HorLightPid, 1]).
+	spawn(?MODULE, intersectionModelLoop,[Id, VertLightPid, HorLightPid, 1,CounterPid]).
 	
-intersectionModelLoop(Id, VertLightPid, HorLightPid, VertGreen) ->
+intersectionModelLoop(Id, VertLightPid, HorLightPid, VertGreen, CounterPid) ->
 	receive
+		newcarL->
+			CounterPid!lcounterp,
+			intersectionModelLoop(Id, VertLightPid, HorLightPid, VertGreen, CounterPid);
+
+		newcarR->
+			CounterPid!rcounterp,
+			intersectionModelLoop(Id, VertLightPid, HorLightPid, VertGreen, CounterPid);
+
     togglelights ->
       case VertGreen of
         1 ->
@@ -175,7 +202,7 @@ intersectionModelLoop(Id, VertLightPid, HorLightPid, VertGreen) ->
           HorLightPid!{changecolor,redamber},
           timer:sleep(1000),
           HorLightPid!{changecolor,green},
-          intersectionModelLoop(Id, VertLightPid, HorLightPid, 0);
+          intersectionModelLoop(Id, VertLightPid, HorLightPid, 0, CounterPid);
         0 ->
           HorLightPid!{changecolor,amber},
           timer:sleep(1000),
@@ -184,15 +211,15 @@ intersectionModelLoop(Id, VertLightPid, HorLightPid, VertGreen) ->
           VertLightPid!{changecolor,redamber},
           timer:sleep(1000),
           VertLightPid!{changecolor,green},
-          intersectionModelLoop(Id, VertLightPid, HorLightPid, 1)
+          intersectionModelLoop(Id, VertLightPid, HorLightPid, 1, CounterPid)
       end;
     printlights ->
       VertLightPid!print,
       HorLightPid!print,
-      intersectionModelLoop(Id, VertLightPid, HorLightPid, VertGreen)
+      intersectionModelLoop(Id, VertLightPid, HorLightPid, VertGreen, CounterPid)
 	end.
-	
-   
+
+
 
 main() ->
   drawGUI(),
@@ -208,15 +235,30 @@ main(ListenerPID, IntersectionPids, X) ->
   %main(ListenerPID, X+1).
   NewIntersectionPids = if
                           (X rem 800) =:= 0 -> lists:map(fun(Z) -> Z!togglelights, Z end, IntersectionPids);
-                          true -> IntersectionPids
+													true -> IntersectionPids
                         end,
-  %lists:map(fun(Z) -> Z!printlights, Z end, IntersectionPids),
+	First = lists:nth(1,IntersectionPids),
+	Last = lists:nth(3, IntersectionPids),
+	G = rand:uniform(100),
+	H = rand:uniform(100),
+	if
+		G < 2 -> First!newcarL;
+		true -> First
+	end,
+	if
+		H < 2 -> Last!newcarR;
+		true -> Last
+	end,
+
+%lists:map(fun(Z) -> Z!printlights, Z end, IntersectionPids),
   %printintxy({6,3, X}),
   gotoend(),
   receive
-		  {ListenerPID, "q"} -> ok
+		  {ListenerPID, "q"} ->
+				io:format("\ec"),
+				ok
 	  after 10 -> %co 100 cykli mija sekunda
-		  main(ListenerPID, NewIntersectionPids, X+1)
+		  main(ListenerPID, IntersectionPids, X+1)
 	  end.
 %main(_,_,_) -> ok.
 
