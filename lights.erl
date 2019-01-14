@@ -196,10 +196,12 @@ main(ListenerPID, IntersectionPids, X) ->
 	%przełączanie świateł
 	[FirstInter, MiddleInter, LastInter] = IntersectionPids,
 	if
-		((X - 2*100) rem (17*100) =:= 0) or ((X - 2*100 - 11*100) rem (17*100) =:= 0) ->
+		%((X - 2*100) rem (17*100) =:= 0) or ((X - 2*100 - 11*100) rem (17*100) =:= 0) ->
+		((X - 2*100) rem (19*100) =:= 0) or ((X - 2*100 - 15*100) rem (19*100) =:= 0) ->
 			FirstInter!togglelights,
 			LastInter!togglelights;
-		(X - 2*100 - 450) rem (850) =:= 0 ->
+		%(X - 2*100 - 450) rem (850) =:= 0 ->
+		((X - 2*100 - 450) rem (19*100) =:= 0) or ((X - 2*100 - 950) rem (19*100) =:= 0)->
 			MiddleInter!togglelights;
 		true -> ok
 	end,
