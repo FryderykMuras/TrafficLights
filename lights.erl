@@ -51,12 +51,12 @@ lightsPair(Id, X, Y, Color) ->
 counterInit(Id)->
 	X = lightsCoords(Id),
 	Y = 8,
-	spawn(?MODULE,counter,[X,Y,0,0,Id,null]).
+	spawn(?MODULE,counter,[X,Y,0,0,0,Id,null]).
 
-counter(X,Y,Lvalue,Rvalue,Id,Shifter)->
+counter(X,Y,Lvalue,Rvalue,MainCounter,Id,Shifter)->
 	printxy({X+1, Y+1, lists:append(integer_to_list(Lvalue),"__ ")}),
 	printxy({X+11 , Y-1, lists:append(integer_to_list(Rvalue),"   ")}),
-
+	printxy({X+6, Y, lists:append(integer_to_list(MainCounter),"   ")}),
 
 	receive
     {green,Timer} ->
@@ -71,16 +71,16 @@ counter(X,Y,Lvalue,Rvalue,Id,Shifter)->
                                       -1;
                                     true ->  0
                                   end,
-            counter(X,Y,Lvalue+L,Rvalue+R,Id,Shifter);
-        true -> counter(X,Y,Lvalue,Rvalue,Id,Shifter)
+            counter(X,Y,Lvalue+L,Rvalue+R,MainCounter-(L+R),Id,Shifter);
+        true -> counter(X,Y,Lvalue,Rvalue,MainCounter,Id,Shifter)
       end;
 
 		{shifterPID,PID} ->
-			counter(X,Y,Lvalue,Rvalue,Id,PID);
-		lcounterp ->
-			counter(X,Y,Lvalue+1,Rvalue,Id,Shifter);
-		rcounterp ->
-			counter(X,Y,Lvalue,Rvalue+1,Id,Shifter);
+			counter(X,Y,Lvalue,Rvalue,MainCounter,Id,PID);
+		lcounter ->
+			counter(X,Y,Lvalue+1,Rvalue,MainCounter,Id,Shifter);
+		rcounter ->
+			counter(X,Y,Lvalue,Rvalue+1,MainCounter,Id,Shifter);
 		quit -> ok
 
 	end.
@@ -110,11 +110,11 @@ intersectionModelLoop(Id, VertLightPid, HorLightPid, VertGreen, GreenTimer, Coun
 			intersectionModelLoop(Id, VertLightPid, HorLightPid, VertGreen, GreenTimer+GTm, CounterPid,PID);
 
 		newcarL->
-			CounterPid!lcounterp,
+			CounterPid!lcounter,
 			intersectionModelLoop(Id, VertLightPid, HorLightPid, VertGreen, GreenTimer+GTm, CounterPid,ShifterPID);
 
 		newcarR->
-			CounterPid!rcounterp,
+			CounterPid!rcounter,
 			intersectionModelLoop(Id, VertLightPid, HorLightPid, VertGreen, GreenTimer+GTm, CounterPid,ShifterPID);
 
     togglelights ->
