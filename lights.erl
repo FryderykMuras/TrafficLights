@@ -23,9 +23,25 @@ keyboardListener (MainPID) ->
 
 lightsPair(Id, X, Y, Color) ->
 	receive
-    {changecolor, NewColor} ->
-			printLightPair(Id, X, Y, NewColor),
-			lightsPair(Id, X, Y, NewColor);
+    {changecolor, toRed, CorrespondingPairPID,VertGreen,IntersectionPID} ->
+			if
+				VertGreen =:= 1-> IntersectionPID!{vertGreen, VertGreen};
+				true ->0
+			end,
+			printLightPair(Id, X, Y, amber),
+			timer:sleep(1000),
+			printLightPair(Id, X, Y, red),
+			CorrespondingPairPID!{changecolor, toGreen, VertGreen, IntersectionPID},
+			lightsPair(Id, X, Y, red);
+		{changecolor, toGreen, VertGreen, IntersectionPID} ->
+			printLightPair(Id, X, Y, redamber),
+			timer:sleep(1000),
+			printLightPair(Id, X, Y, green),
+			if
+				VertGreen =:= 0-> IntersectionPID!{vertGreen, VertGreen};
+				true ->0
+			end,
+			lightsPair(Id, X, Y, green);
     print ->
       printLightPair(Id, X, Y, Color),
       lightsPair(Id, X, Y, Color);
@@ -45,7 +61,7 @@ counter(X,Y,Lvalue,Rvalue,Id,Shifter)->
 	receive
     {green,Timer} ->
       if
-        (Timer rem 6) =:= 0 -> R=if
+        (Timer rem 4) =:= 0 -> R=if
                                     Rvalue > 0 -> Shifter!{Id-1,r,5000},
                                       -1;
                                     true ->  0
@@ -104,24 +120,14 @@ intersectionModelLoop(Id, VertLightPid, HorLightPid, VertGreen, GreenTimer, Coun
     togglelights ->
       case VertGreen of
         1 ->
-          VertLightPid!{changecolor,amber},
-          timer:sleep(1000),
-          VertLightPid!{changecolor,red},
-          %timer:sleep(200),
-          HorLightPid!{changecolor,redamber},
-          timer:sleep(1000),
-          HorLightPid!{changecolor,green},
-          intersectionModelLoop(Id, VertLightPid, HorLightPid, 0, GreenTimer+GTm, CounterPid,ShifterPID);
+          VertLightPid!{changecolor,toRed,HorLightPid,0,self()},
+          intersectionModelLoop(Id, VertLightPid, HorLightPid, VertGreen, GreenTimer+GTm, CounterPid,ShifterPID);
         0 ->
-          HorLightPid!{changecolor,amber},
-          timer:sleep(1000),
-          HorLightPid!{changecolor,red},
-          %timer:sleep(200),
-          VertLightPid!{changecolor,redamber},
-          timer:sleep(1000),
-          VertLightPid!{changecolor,green},
-          intersectionModelLoop(Id, VertLightPid, HorLightPid, 1, GreenTimer+GTm, CounterPid,ShifterPID)
+          HorLightPid!{changecolor,toRed,VertLightPid,1,self()},
+          intersectionModelLoop(Id, VertLightPid, HorLightPid, VertGreen, GreenTimer+GTm, CounterPid,ShifterPID)
       end;
+		{vertGreen, VG}->
+			intersectionModelLoop(Id, VertLightPid, HorLightPid, VG, GreenTimer+GTm, CounterPid,ShifterPID);
     printlights ->
       VertLightPid!print,
       HorLightPid!print,
@@ -168,6 +174,7 @@ shiftcar(PID,Direction,Delay)->
 		true -> PID!newcarR
 	end.
 
+
 main() ->
   drawGUI(),
 	print({hideCursor}),
@@ -180,23 +187,15 @@ main() ->
   %io:format("~p~n",[IntersectionPids]),
 	main(ListenerPID, IntersectionPids, 1).
 main(ListenerPID, IntersectionPids, X) ->
-  %X=1,
-  %timer:sleep(2000),
-  %main(ListenerPID, X+1).
-	
-	
-  NewIntersectionPids = if
-                          (X rem 800) =:= 0 -> lists:map(fun(Z) -> Z!togglelights, Z end, IntersectionPids);
-													true -> IntersectionPids
-                        end,
-	
-	%sterowanie przełączaniem świateł
-%%	if
-%%		X rem 800 -> ;
-%%		true ->
-%%	end
 
+	
+	
+  if
+		(X rem 800) =:= 0 -> lists:map(fun(Z) -> Z!togglelights, Z end, IntersectionPids);
+		true -> IntersectionPids
+	end,
 
+	%generowanie samochodów na skrajnych skrzyżowaniach
 	First = lists:nth(1,IntersectionPids),
 	Last = lists:nth(3, IntersectionPids),
 	G = rand:uniform(100),
@@ -210,8 +209,6 @@ main(ListenerPID, IntersectionPids, X) ->
 		true -> Last
 	end,
 
-%lists:map(fun(Z) -> Z!printlights, Z end, IntersectionPids),
-  %printintxy({6,3, X}),
   gotoend(),
   receive
 		  {ListenerPID, "q"} ->
@@ -222,7 +219,7 @@ main(ListenerPID, IntersectionPids, X) ->
 	  after 10 -> %co 100 cykli mija sekunda
 		  main(ListenerPID, IntersectionPids, X+1)
 	  end.
-%main(_,_,_) -> ok.
+
 
    
       
