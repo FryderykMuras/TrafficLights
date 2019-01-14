@@ -174,6 +174,7 @@ shiftcar(PID,Direction,Delay)->
 		true -> PID!newcarR
 	end.
 
+%firstChange() -> 2.
 
 main() ->
   drawGUI(),
@@ -187,13 +188,23 @@ main() ->
   %io:format("~p~n",[IntersectionPids]),
 	main(ListenerPID, IntersectionPids, 1).
 main(ListenerPID, IntersectionPids, X) ->
+%%  if
+%%		(X rem 800) =:= 0 -> lists:map(fun(Z) -> Z!togglelights, Z end, IntersectionPids);
+%%		true -> IntersectionPids
+%%	end,
 
-	
-	
-  if
-		(X rem 800) =:= 0 -> lists:map(fun(Z) -> Z!togglelights, Z end, IntersectionPids);
-		true -> IntersectionPids
+	%przełączanie świateł
+	[FirstInter, MiddleInter, LastInter] = IntersectionPids,
+	if
+		((X - 2*100) rem (17*100) =:= 0) or ((X - 2*100 - 11*100) rem (17*100) =:= 0) ->
+			FirstInter!togglelights,
+			LastInter!togglelights;
+		(X - 2*100 - 450) rem (850) =:= 0 ->
+			MiddleInter!togglelights;
+		true -> ok
 	end,
+
+
 
 	%generowanie samochodów na skrajnych skrzyżowaniach
 	First = lists:nth(1,IntersectionPids),

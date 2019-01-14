@@ -41,8 +41,8 @@ gotoend() ->
 % color printing
 printxy({X,Y,Msg}) ->
   io:format("\e[~p;~pH~s~n",[Y,X,Msg]).
-printintxy({X,Y,Msg}) ->
-  io:format("\e[~p;~pH~p~n",[Y,X,Msg]).
+%%printintxy({X,Y,Msg}) ->
+%%  io:format("\e[~p;~pH~p~n",[Y,X,Msg]).
 printredxy({X,Y,Msg}) ->
   io:format("\e[~p;~pH\e[91m~p~n\e[0m",[Y,X,Msg]).
 printamberxy({X,Y,Msg}) ->
