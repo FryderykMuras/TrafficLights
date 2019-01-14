@@ -197,11 +197,11 @@ main(ListenerPID, IntersectionPids, X) ->
 	[FirstInter, MiddleInter, LastInter] = IntersectionPids,
 	if
 		%((X - 2*100) rem (17*100) =:= 0) or ((X - 2*100 - 11*100) rem (17*100) =:= 0) ->
-		((X - 2*100) rem (19*100) =:= 0) or ((X - 2*100 - 15*100) rem (19*100) =:= 0) ->
+		((X - 2*100) rem (23*100) =:= 0) or ((X - 2*100 - 19*100) rem (23*100) =:= 0) ->
 			FirstInter!togglelights,
 			LastInter!togglelights;
 		%(X - 2*100 - 450) rem (850) =:= 0 ->
-		((X - 2*100 - 450) rem (19*100) =:= 0) or ((X - 2*100 - 950) rem (19*100) =:= 0)->
+		((X - 2*100 - 350) rem (23*100) =:= 0) or ((X - 2*100 - 1400) rem (23*100) =:= 0)->
 			MiddleInter!togglelights;
 		true -> ok
 	end,
@@ -209,17 +209,17 @@ main(ListenerPID, IntersectionPids, X) ->
 
 
 	%generowanie samochodów na skrajnych skrzyżowaniach
-	First = lists:nth(1,IntersectionPids),
-	Last = lists:nth(3, IntersectionPids),
-	G = rand:uniform(100),
-	H = rand:uniform(100),
+%%	First = lists:nth(1,IntersectionPids),
+%%	Last = lists:nth(3, IntersectionPids),
+	G = rand:uniform(130),
+	H = rand:uniform(130),
 	if
-		G < 2 -> First!newcarL;
-		true -> First
+		G < 2 -> FirstInter!newcarL;
+		true -> FirstInter
 	end,
 	if
-		H < 2 -> Last!newcarR;
-		true -> Last
+		H < 2 -> LastInter!newcarR;
+		true -> LastInter
 	end,
 
   gotoend(),
