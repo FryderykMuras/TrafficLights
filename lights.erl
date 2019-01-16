@@ -1,5 +1,5 @@
 -module(lights).
--compile(export_all).
+-export([keyboardListener/1, lightsPair/4, main/0, intersectionModelLoop/7, shiftcar/3,shifter/1,counter/7]).
 -import(drawingTools, [drawRoads/2, drawGUI/0, printLightPair/4]).
 -import(utils, [color/1, lightsCoords/1, print/1, gotoend/0, printxy/1, printlight/1, drawHorizontalRoad/3, drawVerticalRoad/4]).
 
@@ -14,9 +14,9 @@ keyboardListener (MainPID) ->
 lightsPair(Id, X, Y, Color) ->
 	receive
     {changecolor, toRed, CorrespondingPairPID,VertGreen,IntersectionPID} ->
-			_ = if
+			if
 				VertGreen =:= 1-> IntersectionPID!{vertGreen, VertGreen};
-				true -> 0
+				true -> pass
 			end,
 			printLightPair(Id, X, Y, amber),
 			timer:sleep(1000),
@@ -27,9 +27,9 @@ lightsPair(Id, X, Y, Color) ->
 			printLightPair(Id, X, Y, redamber),
 			timer:sleep(1000),
 			printLightPair(Id, X, Y, green),
-			_ = if
+			if
 				VertGreen =:= 0-> IntersectionPID!{vertGreen, VertGreen};
-				true ->0
+				true -> pass
 			end,
 			lightsPair(Id, X, Y, green);
     print ->
@@ -82,14 +82,14 @@ intersectionModelInit(Id) ->
 	
 intersectionModelLoop(Id, VertLightPid, HorLightPid, VertGreen, GreenTimer, CounterPid, ShifterPID) ->
 	GTm = if
-		VertGreen =:= 0 -> _ = if
+		VertGreen =:= 0 -> if
 												 (GreenTimer rem 4) =:= 0  -> CounterPid!{green} ;
-												 true -> 0
+												 true -> pass
 											 end,
 			1;
-		true -> _ = if
+		true -> if
               GreenTimer =/= 0-> intersectionModelLoop(Id, VertLightPid, HorLightPid, VertGreen, 0, CounterPid, ShifterPID);
-              true ->0
+              true -> pass
             end,
       0
 	end,
