@@ -220,13 +220,11 @@ main(ListenerPID, IntersectionPids, X) ->
   gotoend(),
   receive
 		  {ListenerPID, "q"} ->
-				gotoend(),
 				lists:map(fun(Z) -> Z!quit, Z end, IntersectionPids),
-				%io:format("\ec"),
-				timer:sleep(3000),
-				print({gotoxy,0,16}),
+				timer:sleep(1000),
+				print({clear}),
+				print({gotoxy,1,1}),
 				print({showCursor}),
-				gotoend(),
 				ok
 	  after 10 -> %co 100 cykli mija sekunda
 		  main(ListenerPID, IntersectionPids, X+1)
