@@ -54,26 +54,24 @@ counterInit(Id)->
 	spawn(?MODULE,counter,[X,Y,0,0,0,Id,null]).
 
 counter(X,Y,Lvalue,Rvalue,MainCounter,Id,Shifter)->
-	printxy({X+1, Y+1, lists:append(integer_to_list(Lvalue),"__ ")}),
+	printxy({X+1, Y+1, lists:append(integer_to_list(Lvalue),"__")}),
 	printxy({X+11 , Y-1, lists:append(integer_to_list(Rvalue),"   ")}),
 	printxy({X+6, Y, lists:append(integer_to_list(MainCounter),"   ")}),
 
 	receive
-    {green,Timer} ->
-      if
-        (Timer rem 4) =:= 0 -> R=if
-                                    Rvalue > 0 -> Shifter!{Id-1,r,5000},
-                                      -1;
-                                    true ->  0
-                                  end,
-                                L=if
-                                    Lvalue > 0 -> Shifter!{Id+1,l,5000},
-                                      -1;
-                                    true ->  0
-                                  end,
-            counter(X,Y,Lvalue+L,Rvalue+R,MainCounter-(L+R),Id,Shifter);
-        true -> counter(X,Y,Lvalue,Rvalue,MainCounter,Id,Shifter)
-      end;
+    {green} ->
+			R=if
+					Rvalue > 0 -> Shifter!{Id-1,r,5000},
+						-1;
+					true ->  0
+				end,
+			L=if
+					Lvalue > 0 -> Shifter!{Id+1,l,5000},
+						-1;
+					true ->  0
+				end,
+			counter(X,Y,Lvalue+L,Rvalue+R,MainCounter-(L+R),Id,Shifter);
+
 
 		{shifterPID,PID} ->
 			counter(X,Y,Lvalue,Rvalue,MainCounter,Id,PID);
@@ -96,8 +94,11 @@ intersectionModelInit(Id) ->
 	
 intersectionModelLoop(Id, VertLightPid, HorLightPid, VertGreen, GreenTimer, CounterPid, ShifterPID) ->
 	GTm = if
-		VertGreen =:= 0 -> CounterPid!{green,GreenTimer},
-      1;
+		VertGreen =:= 0 -> if
+												 (GreenTimer rem 4) =:= 0  -> CounterPid!{green} ;
+												 true -> 0
+											 end,
+			1;
 		true -> if
               GreenTimer =/= 0-> intersectionModelLoop(Id, VertLightPid, HorLightPid, VertGreen, 0, CounterPid, ShifterPID);
               true ->0
@@ -174,7 +175,6 @@ shiftcar(PID,Direction,Delay)->
 		true -> PID!newcarR
 	end.
 
-%firstChange() -> 2.
 
 main() ->
   drawGUI(),
@@ -188,10 +188,7 @@ main() ->
   %io:format("~p~n",[IntersectionPids]),
 	main(ListenerPID, IntersectionPids, 1).
 main(ListenerPID, IntersectionPids, X) ->
-%%  if
-%%		(X rem 800) =:= 0 -> lists:map(fun(Z) -> Z!togglelights, Z end, IntersectionPids);
-%%		true -> IntersectionPids
-%%	end,
+
 
 	%przełączanie świateł
 	[FirstInter, MiddleInter, LastInter] = IntersectionPids,
@@ -209,16 +206,14 @@ main(ListenerPID, IntersectionPids, X) ->
 
 
 	%generowanie samochodów na skrajnych skrzyżowaniach
-%%	First = lists:nth(1,IntersectionPids),
-%%	Last = lists:nth(3, IntersectionPids),
-	G = rand:uniform(130),
-	H = rand:uniform(130),
+	L = rand:uniform(130),
+	R= rand:uniform(130),
 	if
-		G < 2 -> FirstInter!newcarL;
+		L < 2 -> FirstInter!newcarL;
 		true -> FirstInter
 	end,
 	if
-		H < 2 -> LastInter!newcarR;
+		R < 2 -> LastInter!newcarR;
 		true -> LastInter
 	end,
 
@@ -227,6 +222,8 @@ main(ListenerPID, IntersectionPids, X) ->
 		  {ListenerPID, "q"} ->
 				lists:map(fun(Z) -> Z!quit, Z end, IntersectionPids),
 				%io:format("\ec"),
+				timer:sleep(3000),
+				print({gotoxy,0,16}),
 				print({showCursor}),
 				ok
 	  after 10 -> %co 100 cykli mija sekunda
