@@ -24,9 +24,9 @@ keyboardListener (MainPID) ->
 lightsPair(Id, X, Y, Color) ->
 	receive
     {changecolor, toRed, CorrespondingPairPID,VertGreen,IntersectionPID} ->
-			if
+			_ = if
 				VertGreen =:= 1-> IntersectionPID!{vertGreen, VertGreen};
-				true ->0
+				true -> 0
 			end,
 			printLightPair(Id, X, Y, amber),
 			timer:sleep(1000),
@@ -37,7 +37,7 @@ lightsPair(Id, X, Y, Color) ->
 			printLightPair(Id, X, Y, redamber),
 			timer:sleep(1000),
 			printLightPair(Id, X, Y, green),
-			if
+			_ = if
 				VertGreen =:= 0-> IntersectionPID!{vertGreen, VertGreen};
 				true ->0
 			end,
@@ -94,12 +94,12 @@ intersectionModelInit(Id) ->
 	
 intersectionModelLoop(Id, VertLightPid, HorLightPid, VertGreen, GreenTimer, CounterPid, ShifterPID) ->
 	GTm = if
-		VertGreen =:= 0 -> if
+		VertGreen =:= 0 -> _ = if
 												 (GreenTimer rem 4) =:= 0  -> CounterPid!{green} ;
 												 true -> 0
 											 end,
 			1;
-		true -> if
+		true -> _ = if
               GreenTimer =/= 0-> intersectionModelLoop(Id, VertLightPid, HorLightPid, VertGreen, 0, CounterPid, ShifterPID);
               true ->0
             end,
