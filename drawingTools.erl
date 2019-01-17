@@ -22,7 +22,11 @@ drawGUI() ->
   print({clear}),
   printxy({30,1,"Symulacja swiatel"}),
   drawRoads(0,1),
-  printxy({20,15,"Aby zakonczyc nacisnij q i Enter"}),
+  printxy({23,16, "Kierunek zielonej fali: "}),
+  printxy({47,16, "-->"}),
+  printxy({1,17,"-------------------------------------------------------------------------"}),
+  printxy({20,18,"Aby zakonczyc nacisnij q i Enter"}),
+  printxy({17,19,"Aby zmienic kierunek nacisnij t i Enter"}),
   gotoend().
 
 printLightPair(0, X, Y, Color) ->

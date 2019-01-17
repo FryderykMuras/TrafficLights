@@ -19,7 +19,7 @@ print({hideCursor}) ->
 print({showCursor})->
   io:format("\e[?25h",[]).
 gotoend() ->
-  print({gotoxy,0,16}).
+  print({gotoxy,0,20}).
 
 printxy({X,Y,Msg}) ->
   io:format("\e[~p;~pH~s~n",[Y,X,Msg]).

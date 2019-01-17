@@ -8,6 +8,7 @@ keyboardListener (MainPID,PrinterPID) ->
   Char = io:get_chars("", 1),
 	case Char of
 		"q" -> MainPID!{self(),Char};
+		"t" -> printxy({0,20," "}), MainPID!{self(),Char}, keyboardListener(MainPID,PrinterPID);
 		_ -> PrinterPID!{printxy,0,16," "},
 			keyboardListener(MainPID,PrinterPID)
 	end.
@@ -118,6 +119,17 @@ intersectionModelLoop(Id, VertLightPid, HorLightPid, VertGreen, GreenTimer, Coun
       end;
 		{vertGreen, VG}->
 			intersectionModelLoop(Id, VertLightPid, HorLightPid, VG, GreenTimer+GTm, CounterPid,ShifterPID, PrinterPID);
+
+		setred ->
+			case VertGreen of
+				1 ->
+					%VertLightPid!{changecolor,toRed,HorLightPid,0,self()},
+					intersectionModelLoop(Id, VertLightPid, HorLightPid, VertGreen, GreenTimer+GTm, CounterPid,ShifterPID,PrinterPID);
+				0 ->
+					HorLightPid!{changecolor,toRed,VertLightPid,1,self()},
+					intersectionModelLoop(Id, VertLightPid, HorLightPid, VertGreen, GreenTimer+GTm, CounterPid,ShifterPID,PrinterPID)
+			end;
+
     printlights ->
       VertLightPid!print,
       HorLightPid!print,
@@ -185,21 +197,45 @@ main() ->
   IntersectionPids = [intersectionModelInit(N,PrinterPID) || N<-[0,1,2]],
 	Shifter = spawn(?MODULE,shifter,[IntersectionPids]),
 	lists:map(fun(Z) -> Z!{shifter,Shifter}, Z end, IntersectionPids),
-	main(ListenerPID, IntersectionPids, 1,PrinterPID).
+	main(1, ListenerPID, IntersectionPids, 1,PrinterPID).
 
-main(ListenerPID, IntersectionPids, X,PrinterPID) ->
+% Mode = 1 -> zielona fala w prawo, -1 -> w lewo
+main(Mode, ListenerPID, IntersectionPids, X,PrinterPID) ->
 	[FirstInter, MiddleInter, LastInter] = IntersectionPids,
+%%	if
+%%		((X - 2*100) rem (23*100) =:= 0) or ((X - 2*100 - 19*100) rem (23*100) =:= 0) ->
+%%			FirstInter!togglelights,
+%%			LastInter!togglelights;
+%%		((X - 2*100 - 350) rem (23*100) =:= 0) or ((X - 2*100 - 1400) rem (23*100) =:= 0)->
+%%			MiddleInter!togglelights;
+%%		true -> ok
+%%	end,
+
+	case Mode of
+		  1 ->
+				FirstChanging = FirstInter,
+				LastChanging = LastInter,
+				ProbL = 100,
+				ProbR = 180;
+			-1 ->
+				FirstChanging = LastInter,
+				LastChanging = FirstInter,
+				ProbL = 180,
+				ProbR = 100
+	end,
+
 	if
-		((X - 2*100) rem (23*100) =:= 0) or ((X - 2*100 - 19*100) rem (23*100) =:= 0) ->
-			FirstInter!togglelights,
-			LastInter!togglelights;
-		((X - 2*100 - 350) rem (23*100) =:= 0) or ((X - 2*100 - 1400) rem (23*100) =:= 0)->
-			MiddleInter!togglelights;
+		((X - 2*100) >= 0) and (((X - 2*100) rem (18*100) =:= 0) or ((X - 2*100 - 8*100) rem (18*100) =:= 0)) ->
+		FirstChanging!togglelights;
+		((X - 2*100 - 450) >= 0) and (((X - 2*100 - 450) rem (18*100) =:= 0) or ((X - 2*100 - 1250) rem (18*100) =:= 0))->
+		MiddleInter!togglelights;
+		((X - 2*100 - 9*100) >= 0) and (((X - 2*100 - 9*100) rem (18*100) =:= 0) or ((X - 2*100 - 17*100) rem (18*100) =:= 0))->
+		LastChanging!togglelights;
 		true -> ok
 	end,
 
-	L = rand:uniform(130),
-	R= rand:uniform(130),
+	L = rand:uniform(ProbL),
+	R= rand:uniform(ProbR),
 	if
 		L < 2 -> FirstInter!newcarL;
 		true -> FirstInter
@@ -211,13 +247,23 @@ main(ListenerPID, IntersectionPids, X,PrinterPID) ->
 
   gotoend(),
   receive
-		  {ListenerPID, "q"} ->
-				lists:map(fun(Z) -> Z!quit, Z end, IntersectionPids),
-				timer:sleep(1000),
-				PrinterPID!{print,clear},
-				PrinterPID!{gotoxy,1,1},
-				PrinterPID!{print,showCursor},
-				ok
-	  after 10 ->
-		  main(ListenerPID, IntersectionPids, X+1,PrinterPID)
-	  end.
+		{ListenerPID, "q"} ->
+			lists:map(fun(Z) -> Z!quit, Z end, IntersectionPids),
+			timer:sleep(1000),
+			PrinterPID!{print,clear},
+			PrinterPID!{gotoxy,1,1},
+			PrinterPID!{print,showCursor},
+			ok;
+		{ListenerPID, "t"} ->
+			FirstInter!setred,
+			MiddleInter!setred,
+			LastInter!setred,
+			%timer:sleep(500),
+			case Mode of
+				  1 ->   PrinterPID!{printxy,47,16, "<--"};
+					-1 ->   PrinterPID!{printxy,47,16, "-->"}
+			end,
+			main(-Mode, ListenerPID, IntersectionPids, 1,PrinterPID)
+	after 10 ->
+		main(Mode, ListenerPID, IntersectionPids, X+1,PrinterPID)
+	end.
