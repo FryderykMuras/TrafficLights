@@ -8,7 +8,7 @@ keyboardListener (MainPID) ->
   Char = io:get_chars("", 1),
 	case Char of
 		"q" -> MainPID!{self(),Char};
-		_ -> keyboardListener(MainPID)
+		_ -> printxy({0,16," "}), keyboardListener(MainPID)
 	end.
 
 lightsPair(Id, X, Y, Color) ->
