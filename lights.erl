@@ -8,8 +8,8 @@ keyboardListener (MainPID,PrinterPID) ->
   Char = io:get_chars("", 1),
 	case Char of
 		"q" -> MainPID!{self(),Char};
-		"t" -> printxy({0,20," "}), MainPID!{self(),Char}, keyboardListener(MainPID,PrinterPID);
-		_ -> PrinterPID!{printxy,0,16," "},
+		"t" -> PrinterPID!{printxy,0,20," "}, MainPID!{self(),Char}, keyboardListener(MainPID,PrinterPID);
+		_ -> PrinterPID!{printxy,0,20," "},
 			keyboardListener(MainPID,PrinterPID)
 	end.
 
@@ -211,28 +211,59 @@ main(Mode, ListenerPID, IntersectionPids, X,PrinterPID) ->
 %%		true -> ok
 %%	end,
 
-	case Mode of
-		  1 ->
-				FirstChanging = FirstInter,
-				LastChanging = LastInter,
-				ProbL = 100,
-				ProbR = 180;
-			-1 ->
-				FirstChanging = LastInter,
-				LastChanging = FirstInter,
-				ProbL = 180,
-				ProbR = 100
-	end,
+%%	case Mode of
+%%      0 ->
+%%        FirstChanging = FirstInter,
+%%        LastChanging = LastInter,
+%%        ProbL = 130,
+%%        ProbR = 130;
+%%		  1 ->
+%%				FirstChanging = FirstInter,
+%%				LastChanging = LastInter,
+%%				ProbL = 100,
+%%				ProbR = 180;
+%%			-1 ->
+%%				FirstChanging = LastInter,
+%%				LastChanging = FirstInter,
+%%				ProbL = 180,
+%%				ProbR = 100
+%%	end,
 
-	if
-		((X - 2*100) >= 0) and (((X - 2*100) rem (18*100) =:= 0) or ((X - 2*100 - 8*100) rem (18*100) =:= 0)) ->
-		FirstChanging!togglelights;
-		((X - 2*100 - 450) >= 0) and (((X - 2*100 - 450) rem (18*100) =:= 0) or ((X - 2*100 - 1250) rem (18*100) =:= 0))->
-		MiddleInter!togglelights;
-		((X - 2*100 - 9*100) >= 0) and (((X - 2*100 - 9*100) rem (18*100) =:= 0) or ((X - 2*100 - 17*100) rem (18*100) =:= 0))->
-		LastChanging!togglelights;
-		true -> ok
-	end,
+  if
+      Mode =:= 0 ->
+        if
+          ((X - 2*100) >= 0) and (((X - 2*100) rem (23*100) =:= 0) or ((X - 2*100 - 19*100) rem (23*100) =:= 0)) ->
+            FirstInter!togglelights,
+            LastInter!togglelights;
+          ((X - 2*100 - 350) >= 0) and (((X - 2*100 - 350) rem (23*100) =:= 0) or ((X - 2*100 - 1400) rem (23*100) =:= 0))->
+            MiddleInter!togglelights;
+          true -> ok
+        end,
+        ProbL = 130,
+        ProbR = 130;
+      true ->
+        case Mode of
+            1 ->
+              FirstChanging = FirstInter,
+              LastChanging = LastInter,
+              ProbL = 100,
+              ProbR = 180;
+            -1 ->
+              FirstChanging = LastInter,
+              LastChanging = FirstInter,
+              ProbL = 180,
+              ProbR = 100
+        end,
+        if
+          ((X - 2*100) >= 0) and (((X - 2*100) rem (18*100) =:= 0) or ((X - 2*100 - 8*100) rem (18*100) =:= 0)) ->
+            FirstChanging!togglelights;
+          ((X - 2*100 - 450) >= 0) and (((X - 2*100 - 450) rem (18*100) =:= 0) or ((X - 2*100 - 1250) rem (18*100) =:= 0))->
+            MiddleInter!togglelights;
+          ((X - 2*100 - 9*100) >= 0) and (((X - 2*100 - 9*100) rem (18*100) =:= 0) or ((X - 2*100 - 17*100) rem (18*100) =:= 0))->
+            LastChanging!togglelights;
+          true -> ok
+        end
+  end,
 
 	L = rand:uniform(ProbL),
 	R= rand:uniform(ProbR),
@@ -260,10 +291,10 @@ main(Mode, ListenerPID, IntersectionPids, X,PrinterPID) ->
 			LastInter!setred,
 			%timer:sleep(500),
 			case Mode of
-				  1 ->   PrinterPID!{printxy,47,16, "<--"};
-					-1 ->   PrinterPID!{printxy,47,16, "-->"}
-			end,
-			main(-Mode, ListenerPID, IntersectionPids, 1,PrinterPID)
+        1 ->   PrinterPID!{printxy,47,16, "<->"}, main(0, ListenerPID, IntersectionPids, -100,PrinterPID);
+        0 ->   PrinterPID!{printxy,47,16, "<--"}, main(-1, ListenerPID, IntersectionPids, -100,PrinterPID);
+        -1 ->   PrinterPID!{printxy,47,16, "-->"}, main(1, ListenerPID, IntersectionPids, -100,PrinterPID)
+			end
 	after 10 ->
 		main(Mode, ListenerPID, IntersectionPids, X+1,PrinterPID)
 	end.
