@@ -1,52 +1,53 @@
 -module(lights).
--export([keyboardListener/1, lightsPair/4, main/0, intersectionModelLoop/7, shiftcar/3,shifter/1,counter/7]).
+-export([keyboardListener/2, lightsPair/5, main/0, intersectionModelLoop/8, shiftcar/3,shifter/1,counter/8,printer/0]).
 -import(drawingTools, [drawRoads/2, drawGUI/0, printLightPair/4]).
 -import(utils, [color/1, lightsCoords/1, print/1, gotoend/0, printxy/1, printlight/1, drawHorizontalRoad/3, drawVerticalRoad/4]).
 
-keyboardListener (MainPID) ->
+keyboardListener (MainPID,PrinterPID) ->
   gotoend(),
   Char = io:get_chars("", 1),
 	case Char of
 		"q" -> MainPID!{self(),Char};
-		_ -> printxy({0,16," "}), keyboardListener(MainPID)
+		_ -> PrinterPID!{printxy,0,16," "},
+			keyboardListener(MainPID,PrinterPID)
 	end.
 
-lightsPair(Id, X, Y, Color) ->
+lightsPair(Id, X, Y, Color, PrinterPID) ->
 	receive
     {changecolor, toRed, CorrespondingPairPID,VertGreen,IntersectionPID} ->
 			if
 				VertGreen =:= 1-> IntersectionPID!{vertGreen, VertGreen};
 				true -> pass
 			end,
-			printLightPair(Id, X, Y, amber),
+			PrinterPID!{printLightPair,Id, X, Y, amber},
 			timer:sleep(1000),
-			printLightPair(Id, X, Y, red),
+			PrinterPID!{printLightPair,Id, X, Y, red},
 			CorrespondingPairPID!{changecolor, toGreen, VertGreen, IntersectionPID},
-			lightsPair(Id, X, Y, red);
+			lightsPair(Id, X, Y, red, PrinterPID);
 		{changecolor, toGreen, VertGreen, IntersectionPID} ->
-			printLightPair(Id, X, Y, redamber),
+			PrinterPID!{printLightPair,Id, X, Y, redamber},
 			timer:sleep(1000),
-			printLightPair(Id, X, Y, green),
+			PrinterPID!{printLightPair,Id, X, Y, green},
 			if
 				VertGreen =:= 0-> IntersectionPID!{vertGreen, VertGreen};
 				true -> pass
 			end,
-			lightsPair(Id, X, Y, green);
+			lightsPair(Id, X, Y, green, PrinterPID);
     print ->
-      printLightPair(Id, X, Y, Color),
-      lightsPair(Id, X, Y, Color);
+			PrinterPID!{printLightPair,Id, X, Y, Color},
+      lightsPair(Id, X, Y, Color, PrinterPID);
 		quit -> ok
 	end.
 
-counterInit(Id)->
+counterInit(Id, PrinterPID)->
 	X = lightsCoords(Id),
 	Y = 8,
-	spawn(?MODULE,counter,[X,Y,0,0,0,Id,null]).
+	spawn(?MODULE,counter,[X,Y,0,0,0,Id,null,PrinterPID]).
 
-counter(X,Y,Lvalue,Rvalue,MainCounter,Id,Shifter)->
-	printxy({X+1, Y+1, lists:append(integer_to_list(Lvalue),"__")}),
-	printxy({X+11 , Y-1, lists:append(integer_to_list(Rvalue),"   ")}),
-	printxy({X+6, Y, lists:append(integer_to_list(MainCounter),"   ")}),
+counter(X,Y,Lvalue,Rvalue,MainCounter,Id,Shifter, PrinterPID)->
+	PrinterPID!{printxy,X+1, Y+1, lists:append(integer_to_list(Lvalue),"__")},
+	PrinterPID!{printxy,X+11, Y-1, lists:append(integer_to_list(Rvalue),"   ")},
+	PrinterPID!{printxy,X+6, Y, lists:append(integer_to_list(MainCounter),"   ")},
 
 	receive
     {green} ->
@@ -60,27 +61,27 @@ counter(X,Y,Lvalue,Rvalue,MainCounter,Id,Shifter)->
 						-1;
 					true ->  0
 				end,
-			counter(X,Y,Lvalue+L,Rvalue+R,MainCounter-(L+R),Id,Shifter);
+			counter(X,Y,Lvalue+L,Rvalue+R,MainCounter-(L+R),Id,Shifter, PrinterPID);
 
 		{shifterPID,PID} ->
-			counter(X,Y,Lvalue,Rvalue,MainCounter,Id,PID);
+			counter(X,Y,Lvalue,Rvalue,MainCounter,Id,PID, PrinterPID);
 		lcounter ->
-			counter(X,Y,Lvalue+1,Rvalue,MainCounter,Id,Shifter);
+			counter(X,Y,Lvalue+1,Rvalue,MainCounter,Id,Shifter, PrinterPID);
 		rcounter ->
-			counter(X,Y,Lvalue,Rvalue+1,MainCounter,Id,Shifter);
+			counter(X,Y,Lvalue,Rvalue+1,MainCounter,Id,Shifter, PrinterPID);
 		quit -> ok
 
 	end.
 
-intersectionModelInit(Id) ->
-	CounterPid = counterInit(Id),
-  VertLightPid = spawn(?MODULE, lightsPair, [0, lightsCoords(Id), 1, green]),
-  HorLightPid = spawn(?MODULE, lightsPair, [1, lightsCoords(Id), 1, red]),
+intersectionModelInit(Id,PrinterPID) ->
+	CounterPid = counterInit(Id, PrinterPID),
+  VertLightPid = spawn(?MODULE, lightsPair, [0, lightsCoords(Id), 1, green, PrinterPID]),
+  HorLightPid = spawn(?MODULE, lightsPair, [1, lightsCoords(Id), 1, red, PrinterPID]),
   VertLightPid!print,
   HorLightPid!print,
-	spawn(?MODULE, intersectionModelLoop,[Id, VertLightPid, HorLightPid, 1, 0, CounterPid,null]).
+	spawn(?MODULE, intersectionModelLoop,[Id, VertLightPid, HorLightPid, 1, 0, CounterPid,null,PrinterPID]).
 	
-intersectionModelLoop(Id, VertLightPid, HorLightPid, VertGreen, GreenTimer, CounterPid, ShifterPID) ->
+intersectionModelLoop(Id, VertLightPid, HorLightPid, VertGreen, GreenTimer, CounterPid, ShifterPID, PrinterPID) ->
 	GTm = if
 		VertGreen =:= 0 -> if
 												 (GreenTimer rem 4) =:= 0  -> CounterPid!{green} ;
@@ -88,7 +89,7 @@ intersectionModelLoop(Id, VertLightPid, HorLightPid, VertGreen, GreenTimer, Coun
 											 end,
 			1;
 		true -> if
-              GreenTimer =/= 0-> intersectionModelLoop(Id, VertLightPid, HorLightPid, VertGreen, 0, CounterPid, ShifterPID);
+              GreenTimer =/= 0-> intersectionModelLoop(Id, VertLightPid, HorLightPid, VertGreen, 0, CounterPid, ShifterPID, PrinterPID);
               true -> pass
             end,
       0
@@ -96,38 +97,38 @@ intersectionModelLoop(Id, VertLightPid, HorLightPid, VertGreen, GreenTimer, Coun
 	receive
 		{shifter, PID}->
 			CounterPid!{shifterPID,PID},
-			intersectionModelLoop(Id, VertLightPid, HorLightPid, VertGreen, GreenTimer+GTm, CounterPid,PID);
+			intersectionModelLoop(Id, VertLightPid, HorLightPid, VertGreen, GreenTimer+GTm, CounterPid,PID, PrinterPID);
 
 		newcarL->
 			CounterPid!lcounter,
-			intersectionModelLoop(Id, VertLightPid, HorLightPid, VertGreen, GreenTimer+GTm, CounterPid,ShifterPID);
+			intersectionModelLoop(Id, VertLightPid, HorLightPid, VertGreen, GreenTimer+GTm, CounterPid,ShifterPID, PrinterPID);
 
 		newcarR->
 			CounterPid!rcounter,
-			intersectionModelLoop(Id, VertLightPid, HorLightPid, VertGreen, GreenTimer+GTm, CounterPid,ShifterPID);
+			intersectionModelLoop(Id, VertLightPid, HorLightPid, VertGreen, GreenTimer+GTm, CounterPid,ShifterPID, PrinterPID);
 
     togglelights ->
       case VertGreen of
         1 ->
           VertLightPid!{changecolor,toRed,HorLightPid,0,self()},
-          intersectionModelLoop(Id, VertLightPid, HorLightPid, VertGreen, GreenTimer+GTm, CounterPid,ShifterPID);
+          intersectionModelLoop(Id, VertLightPid, HorLightPid, VertGreen, GreenTimer+GTm, CounterPid,ShifterPID, PrinterPID);
         0 ->
           HorLightPid!{changecolor,toRed,VertLightPid,1,self()},
-          intersectionModelLoop(Id, VertLightPid, HorLightPid, VertGreen, GreenTimer+GTm, CounterPid,ShifterPID)
+          intersectionModelLoop(Id, VertLightPid, HorLightPid, VertGreen, GreenTimer+GTm, CounterPid,ShifterPID, PrinterPID)
       end;
 		{vertGreen, VG}->
-			intersectionModelLoop(Id, VertLightPid, HorLightPid, VG, GreenTimer+GTm, CounterPid,ShifterPID);
+			intersectionModelLoop(Id, VertLightPid, HorLightPid, VG, GreenTimer+GTm, CounterPid,ShifterPID, PrinterPID);
     printlights ->
       VertLightPid!print,
       HorLightPid!print,
-      intersectionModelLoop(Id, VertLightPid, HorLightPid, VertGreen, GreenTimer+GTm, CounterPid,ShifterPID);
+      intersectionModelLoop(Id, VertLightPid, HorLightPid, VertGreen, GreenTimer+GTm, CounterPid,ShifterPID, PrinterPID);
 		quit ->
 			VertLightPid!quit,
 			HorLightPid!quit,
 			CounterPid!quit,
 			ShifterPID!quit
 
-	after 100 -> intersectionModelLoop(Id, VertLightPid, HorLightPid, VertGreen, GreenTimer+GTm, CounterPid,ShifterPID)
+	after 100 -> intersectionModelLoop(Id, VertLightPid, HorLightPid, VertGreen, GreenTimer+GTm, CounterPid,ShifterPID, PrinterPID)
 	end.
 
 shifter(InterPIDs)->
@@ -161,16 +162,32 @@ shiftcar(PID,Direction,Delay)->
 		true -> PID!newcarR
 	end.
 
+printer()->
+	receive
+		{drawGUI}->drawGUI(),
+			printer();
+		{gotoxy,X,Y}->print({gotoxy,X,Y}),
+			printer();
+		{print,Parameter}->print({Parameter}),
+			printer();
+		{printxy,X,Y,Msg}->printxy({X,Y,Msg}),
+			printer();
+		{printLightPair,Id, X, Y, Color} ->printLightPair(Id, X, Y, Color),
+			printer();
+		quit -> ok
+	end.
+
 main() ->
-  drawGUI(),
-	print({hideCursor}),
-	ListenerPID = spawn(?MODULE, keyboardListener, [self()]),
-  IntersectionPids = [intersectionModelInit(N) || N<-[0,1,2]],
+	PrinterPID = spawn(?MODULE, printer,[]),
+  PrinterPID!{drawGUI},
+	PrinterPID!{print,hideCursor},
+	ListenerPID = spawn(?MODULE, keyboardListener, [self(),PrinterPID]),
+  IntersectionPids = [intersectionModelInit(N,PrinterPID) || N<-[0,1,2]],
 	Shifter = spawn(?MODULE,shifter,[IntersectionPids]),
 	lists:map(fun(Z) -> Z!{shifter,Shifter}, Z end, IntersectionPids),
-	main(ListenerPID, IntersectionPids, 1).
+	main(ListenerPID, IntersectionPids, 1,PrinterPID).
 
-main(ListenerPID, IntersectionPids, X) ->
+main(ListenerPID, IntersectionPids, X,PrinterPID) ->
 	[FirstInter, MiddleInter, LastInter] = IntersectionPids,
 	if
 		((X - 2*100) rem (23*100) =:= 0) or ((X - 2*100 - 19*100) rem (23*100) =:= 0) ->
@@ -197,10 +214,10 @@ main(ListenerPID, IntersectionPids, X) ->
 		  {ListenerPID, "q"} ->
 				lists:map(fun(Z) -> Z!quit, Z end, IntersectionPids),
 				timer:sleep(1000),
-				print({clear}),
-				print({gotoxy,1,1}),
-				print({showCursor}),
+				PrinterPID!{print,clear},
+				PrinterPID!{gotoxy,1,1},
+				PrinterPID!{print,showCursor},
 				ok
 	  after 10 ->
-		  main(ListenerPID, IntersectionPids, X+1)
+		  main(ListenerPID, IntersectionPids, X+1,PrinterPID)
 	  end.
