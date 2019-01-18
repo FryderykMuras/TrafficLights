@@ -27,7 +27,7 @@ drawGUI() ->
   printxy({47,16, "-->"}),
   printxy({1,17,"-------------------------------------------------------------------------"}),
   printxy({20,18,"Aby zakonczyc nacisnij q i Enter"}),
-  printxy({17,19,"Aby zmienic kierunek nacisnij t i Enter"}),
+  printxy({19,19,"Aby zmienic tryb nacisnij t i Enter"}),
   gotoend().
 
 printLightPair(0, X, Y, Color) ->

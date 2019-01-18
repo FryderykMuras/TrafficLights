@@ -287,7 +287,14 @@ main(Mode, ListenerPID, IntersectionPids, X,PrinterPID,LGen,RGen,LogPrinterPID) 
         ProbL = 130,
         ProbR = 130;
 			Mode =:= 2 ->
-
+				if
+					((X - 2*100) >= 0) and (((X - 2*100) rem (35*100) =:= 0) or ((X - 2*100 - 25*100) rem (35*100) =:= 0)) ->
+						FirstInter!togglelights,
+						LastInter!togglelights;
+					((X - 2*100 - 350) >= 0) and (((X - 2*100 - 350) rem (35*100) =:= 0) or ((X - 2*100 - 1900) rem (35*100) =:= 0))->
+						MiddleInter!togglelights;
+					true -> ok
+				end,
 				ProbL = 130,
 				ProbR = 130;
       true ->
@@ -346,7 +353,7 @@ main(Mode, ListenerPID, IntersectionPids, X,PrinterPID,LGen,RGen,LogPrinterPID) 
 			case Mode of
         1 ->   PrinterPID!{printxy,47,16, "<->"}, PrinterPID!{printxy,55,1, "Poludnie  "}, main(0, ListenerPID, IntersectionPids, -100,PrinterPID,LGen+GL,RGen+GR,LogPrinterPID);
         0 ->   PrinterPID!{printxy,47,16, "<--"}, PrinterPID!{printxy,55,1, "Popoludnie"},main(-1, ListenerPID, IntersectionPids, -100,PrinterPID,LGen+GL,RGen+GR,LogPrinterPID);
-        -1 ->   PrinterPID!{printxy,47,16, "-->"}, PrinterPID!{printxy,55,1, "Noc        "}, FirstInter!startblinking, MiddleInter!startblinking, LastInter!startblinking, main(2, ListenerPID, IntersectionPids, -100,PrinterPID,LGen+GL,RGen+GR,LogPrinterPID);
+        -1 ->   PrinterPID!{printxy,47,16, "<->"}, PrinterPID!{printxy,55,1, "Noc        "}, main(2, ListenerPID, IntersectionPids, -100,PrinterPID,LGen+GL,RGen+GR,LogPrinterPID);
 				2 ->   PrinterPID!{printxy,47,16, "-->"}, PrinterPID!{printxy,55,1, "Rano      "}, main(1, ListenerPID, IntersectionPids, -100,PrinterPID,LGen+GL,RGen+GR,LogPrinterPID)
 			end
 	after 10 ->
