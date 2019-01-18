@@ -1,5 +1,5 @@
 -module(lights).
--export([logPrinter/1,to_timestamp/1,keyboardListener/2, lightsPair/5, main/0, intersectionModelLoop/8, shiftcar/3,shifter/1,counter/8,printer/0]).
+-export([logPrinter/1,to_timestamp/1,keyboardListener/2, lightsPair/6, main/0, intersectionModelLoop/8, shiftcar/3,shifter/1,counter/8,printer/0]).
 -import(drawingTools, [drawRoads/2, drawGUI/0, printLightPair/4]).
 -import(utils, [color/1, lightsCoords/1, print/1, gotoend/0, printxy/1, printlight/1, drawHorizontalRoad/3, drawVerticalRoad/4]).
 
@@ -13,7 +13,15 @@ keyboardListener (MainPID,PrinterPID) ->
 			keyboardListener(MainPID,PrinterPID)
 	end.
 
-lightsPair(Id, X, Y, Color, PrinterPID) ->
+lightsPair(Id, X, Y, Color, PrinterPID, Blinking) ->
+	if
+		Blinking =:= 1 ->
+			PrinterPID!{printLightPair, Id, X, Y, empty},
+			timer:sleep(500),
+			PrinterPID!{printLightPair, Id, X, Y, amber};
+			%timer:sleep(500);
+		true -> pass
+	end,
 	receive
     {changecolor, toRed, CorrespondingPairPID,VertGreen,IntersectionPID} ->
 			if
@@ -24,7 +32,7 @@ lightsPair(Id, X, Y, Color, PrinterPID) ->
 			timer:sleep(1000),
 			PrinterPID!{printLightPair,Id, X, Y, red},
 			CorrespondingPairPID!{changecolor, toGreen, VertGreen, IntersectionPID},
-			lightsPair(Id, X, Y, red, PrinterPID);
+			lightsPair(Id, X, Y, red, PrinterPID, 0);
 		{changecolor, toGreen, VertGreen, IntersectionPID} ->
 			PrinterPID!{printLightPair,Id, X, Y, redamber},
 			timer:sleep(1000),
@@ -33,11 +41,16 @@ lightsPair(Id, X, Y, Color, PrinterPID) ->
 				VertGreen =:= 0-> IntersectionPID!{vertGreen, VertGreen};
 				true -> pass
 			end,
-			lightsPair(Id, X, Y, green, PrinterPID);
+			lightsPair(Id, X, Y, green, PrinterPID, 0);
     print ->
 			PrinterPID!{printLightPair,Id, X, Y, Color},
-      lightsPair(Id, X, Y, Color, PrinterPID);
+      lightsPair(Id, X, Y, Color, PrinterPID, Blinking);
+		{blink, Col} ->
+			lightsPair(Id, X, Y, Col, PrinterPID, 1);
+
 		quit -> ok
+	after 500 ->
+		lightsPair(Id, X, Y, Color, PrinterPID, Blinking)
 	end.
 
 counterInit(Id, PrinterPID)->
@@ -76,8 +89,8 @@ counter(X,Y,Lvalue,Rvalue,MainCounter,Id,Shifter, PrinterPID)->
 
 intersectionModelInit(Id,PrinterPID) ->
 	CounterPid = counterInit(Id, PrinterPID),
-  VertLightPid = spawn(?MODULE, lightsPair, [0, lightsCoords(Id), 1, green, PrinterPID]),
-  HorLightPid = spawn(?MODULE, lightsPair, [1, lightsCoords(Id), 1, red, PrinterPID]),
+  VertLightPid = spawn(?MODULE, lightsPair, [0, lightsCoords(Id), 1, green, PrinterPID, 0]),
+  HorLightPid = spawn(?MODULE, lightsPair, [1, lightsCoords(Id), 1, red, PrinterPID, 0]),
   VertLightPid!print,
   HorLightPid!print,
 	spawn(?MODULE, intersectionModelLoop,[Id, VertLightPid, HorLightPid, 1, 0, CounterPid,null,PrinterPID]).
@@ -107,6 +120,11 @@ intersectionModelLoop(Id, VertLightPid, HorLightPid, VertGreen, GreenTimer, Coun
 		newcarR->
 			CounterPid!rcounter,
 			intersectionModelLoop(Id, VertLightPid, HorLightPid, VertGreen, GreenTimer+GTm, CounterPid,ShifterPID, PrinterPID);
+
+		startblinking->
+			HorLightPid!{blink, green},
+			VertLightPid!{blink, red},
+			intersectionModelLoop(Id, VertLightPid, HorLightPid, 0, GreenTimer+GTm, CounterPid,ShifterPID, PrinterPID);
 
     togglelights ->
       case VertGreen of
@@ -269,14 +287,7 @@ main(Mode, ListenerPID, IntersectionPids, X,PrinterPID,LGen,RGen,LogPrinterPID) 
         ProbL = 130,
         ProbR = 130;
 			Mode =:= 2 ->
-				if
-					((X - 2*100) >= 0) and (((X - 2*100) rem (23*100) =:= 0) or ((X - 2*100 - 19*100) rem (23*100) =:= 0)) ->
-						FirstInter!togglelights,
-						LastInter!togglelights;
-					((X - 2*100 - 350) >= 0) and (((X - 2*100 - 350) rem (23*100) =:= 0) or ((X - 2*100 - 1400) rem (23*100) =:= 0))->
-						MiddleInter!togglelights;
-					true -> ok
-				end,
+
 				ProbL = 130,
 				ProbR = 130;
       true ->
@@ -335,7 +346,7 @@ main(Mode, ListenerPID, IntersectionPids, X,PrinterPID,LGen,RGen,LogPrinterPID) 
 			case Mode of
         1 ->   PrinterPID!{printxy,47,16, "<->"}, PrinterPID!{printxy,55,1, "Poludnie  "}, main(0, ListenerPID, IntersectionPids, -100,PrinterPID,LGen+GL,RGen+GR,LogPrinterPID);
         0 ->   PrinterPID!{printxy,47,16, "<--"}, PrinterPID!{printxy,55,1, "Popoludnie"},main(-1, ListenerPID, IntersectionPids, -100,PrinterPID,LGen+GL,RGen+GR,LogPrinterPID);
-        -1 ->   PrinterPID!{printxy,47,16, "-->"}, PrinterPID!{printxy,55,1, "Noc        "}, main(2, ListenerPID, IntersectionPids, -100,PrinterPID,LGen+GL,RGen+GR,LogPrinterPID);
+        -1 ->   PrinterPID!{printxy,47,16, "-->"}, PrinterPID!{printxy,55,1, "Noc        "}, FirstInter!startblinking, MiddleInter!startblinking, LastInter!startblinking, main(2, ListenerPID, IntersectionPids, -100,PrinterPID,LGen+GL,RGen+GR,LogPrinterPID);
 				2 ->   PrinterPID!{printxy,47,16, "-->"}, PrinterPID!{printxy,55,1, "Rano      "}, main(1, ListenerPID, IntersectionPids, -100,PrinterPID,LGen+GL,RGen+GR,LogPrinterPID)
 			end
 	after 10 ->
