@@ -62,7 +62,13 @@ printlight({X,Y,green}) ->
   printxy({X,Y+2,"| |"}),
   printxy({X,Y+3,"|"}),
   printgreenxy({X+1,Y+3,o}),
-  printxy({X+2,Y+3,"|"}).
+  printxy({X+2,Y+3,"|"});
+printlight({X,Y,empty}) ->
+  printxy({X+1,Y,"_"}),
+  printxy({X,Y+1,"| |"}),
+  printxy({X,Y+2,"| |"}),
+  printxy({X,Y+3,"| |"}),
+  printxy({X+1,Y+3,"_"}).
 
 drawHorizontalRoad(Xp, Dl, Y) ->
   io:format("\e[~p;~pH~*.._s~n",[Y,Xp, Dl, ""]),

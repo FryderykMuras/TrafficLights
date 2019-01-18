@@ -22,6 +22,7 @@ drawGUI() ->
   print({clear}),
   printxy({30,1,"Symulacja swiatel"}),
   drawRoads(0,1),
+  printxy({55,1, "Rano      "}),
   printxy({23,16, "Kierunek zielonej fali: "}),
   printxy({47,16, "-->"}),
   printxy({1,17,"-------------------------------------------------------------------------"}),
